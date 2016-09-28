@@ -1,9 +1,30 @@
 import Rx from 'rxjs'
+import switchPath from 'switch-path'
 import {run} from '@cycle/rxjs-run'
 import {div, makeDOMDriver} from '@cycle/dom'
+import {createHistory} from 'history'
+import {makeRouterDriver} from 'cyclic-router'
 
-const main = sources => ({
-  DOM: Rx.Observable.of('hello from cycle-sandbox!').map(x => div(x))
+import {MainPage} from './page/main'
+
+const main = sources => {
+  const match$ = sources.router.define({
+    '/': MainPage,
+  })
+
+  const page$ = match$.map(({path, value}) =>
+    value(Object.assign({}, sources, {
+      router: sources.router.path(path)
+    }))
+  )
+
+  return {
+    DOM: page$.flatMap(c => c.DOM),
+    router: Rx.Observable.of('/'),
+  }
+}
+
+run(main, { 
+  DOM: makeDOMDriver('#app'),
+  router: makeRouterDriver(createHistory(), switchPath),
 })
-
-run(main, { DOM: makeDOMDriver('#app') })
